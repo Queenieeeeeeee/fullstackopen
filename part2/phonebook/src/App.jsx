@@ -1,6 +1,18 @@
 import { useState, useEffect } from 'react'
 import noteService from './services/persons.js'
 
+  const Notification = ({ message }) => {
+    if (message === null) {
+      return null
+    }
+
+    return (
+      <div className="message">
+        {message}
+      </div>
+    )
+  }
+
   const Filter = ({ searchTerm, handleSearchTerm }) => {
     return (
       <div>
@@ -41,6 +53,7 @@ const App = () => {
   const [newName, setNewName] = useState('')
   const [newNumber, setNewNumber] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
+  const [message, setMessage] = useState(null)
   
   useEffect(() => {
   noteService
@@ -65,37 +78,54 @@ const App = () => {
     setNewNumber(event.target.value)
     }
 
-  const addNote = (event) => {
-    event.preventDefault()
+const addNote = (event) => {
+  event.preventDefault()
 
-    const exisitngPerson = persons.find(person => person.name === newName)
-    if (exisitngPerson) {
-      if (window.confirm(`${newName} is already added to phonebook, replace the old number with a new one?` )) {
-        const updatedPerson = { ...exisitngPerson, number: newNumber }
-        noteService
-          .update(exisitngPerson.id, updatedPerson)
-          .then(returnedPerson => {
-            setPersons(persons.map(person => person.id === exisitngPerson.id ? returnedPerson : person))
-            setNewNumber('')
-          })
-      } 
-    }
-      else {
-        const noteObject = {
-        name: newName,
-        number: newNumber
-      }
-
+  const exisitngPerson = persons.find(person => person.name === newName)
+  
+  if (exisitngPerson) {
+    if (window.confirm(`${newName} is already added to phonebook, replace the old number with a new one?`)) {
+      const updatedPerson = { ...exisitngPerson, number: newNumber }
       noteService
-        .create(noteObject)
-        .then(returnedNote => {
-          setPersons(persons.concat(returnedNote))
+        .update(exisitngPerson.id, updatedPerson)
+        .then(returnedPerson => {
+          setPersons(persons.map(person => person.id === exisitngPerson.id ? returnedPerson : person))
           setNewNumber('')
-          setNewName('')
+          setMessage(`Updated ${newName}`)
+          setTimeout(() => {
+            setMessage(null)
+          }, 5000)
         })
+        .catch(error => {
+          console.log('Error caught:', error)
+          console.log('Error response:', error.response)
+          setMessage(`Information of ${newName} has already been removed from server`)
+          setTimeout(() => {
+            setMessage(null)
+          }, 5000)
+          setPersons(persons.filter(p => p.id !== exisitngPerson.id))
+        })
+    }
+  }
+  else {
+    const noteObject = {
+      name: newName,
+      number: newNumber
+    }
+
+    noteService
+      .create(noteObject)
+      .then(returnedNote => {
+        setPersons(persons.concat(returnedNote))
+        setNewNumber('')
+        setNewName('')
+        setMessage(`Added ${newName}`)
+        setTimeout(() => {
+          setMessage(null)
+        }, 5000)
+      })
   }
 }
-
   const filtershownames = persons.filter(person => person.name.toLowerCase().includes(searchTerm.toLowerCase()))
 
   const deletePerson = (id) => {
@@ -112,6 +142,7 @@ const App = () => {
   return (
     <div>
       <h2>Phonebook</h2>
+      <Notification message={message} />
       <Filter searchTerm={searchTerm} handleSearchTerm={handleSearchTerm} />
       <h3>Add a new</h3>
       <PersonForm addNote={addNote} newName={newName} newNumber={newNumber} handleNameChange={handleNameChange} handleNumberChange={handleNumberChange} /> 
